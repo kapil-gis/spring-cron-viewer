@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cron Expression Describer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+        #description {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cron Expression Describer</h1>
+        <form>
+            <label for="cron">Enter Cron Expression:</label>
+            <input type="text" id="cron" name="cron" placeholder="e.g. 0 0 9 * * *" required>
+        </form>
+        <div class="result">
+            <p id="description"></p>
+        </div>
+    </div>
+
+    <script>
+        function describeCronExpression(cronExpression) {
+            const parts = cronExpression.trim().split(' ');
+            if (parts.length !== 6) {
+                return "Invalid cron expression";
+            }
+
+            const [second, minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+
+            function interpretPart(part, unit, includeAt = true) {
+                if (part === '*') {
+                    return `${includeAt ? 'every ' : ''}${unit}`;
+                } else if (part.includes(',')) {
+                    return `at ${part.replace(/,/g, ', ')} ${unit}`;
+                } else if (part.includes('-')) {
+                    const [start, end] = part.split('-');
+                    return `from ${start} to ${end} ${unit}`;
+                } else if (part.includes('/')) {
+                    const [base, interval] = part.split('/');
+                    return `every ${interval} ${unit} starting from ${base}`;
+                } else if (!isNaN(part)) {
+                    return `at ${part} ${unit}`;
+                }
+                return part;
+            }
+
+            const description = [];
+
+            if (second !== '*') {
+                description.push(interpretPart(second, 'second(s)', false));
+            }
+            if (minute !== '*') {
+                description.push(interpretPart(minute, 'minute(s)', false));
+            }
+            if (hour !== '*') {
+                let hourDescription = interpretPart(hour, 'hour(s)', false);
+                if (hourDescription.startsWith('at ')) {
+                    const hourValue = parseInt(hour.split(',')[0], 10);
+                    const period = hourValue >= 12 ? (hourValue > 12 ? `${hourValue - 12} PM` : '12 PM') : `${hourValue === 0 ? 12 : hourValue} AM`;
+                    description.push(`at ${period}`);
+                } else {
+                    description.push(hourDescription);
+                }
+            }
+
+            // Special case for daily schedules
+            if (dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
+                if (!description.length) {
+                    description.push('every day');
+                } else {
+                    description.push('daily');
+                }
+            }
+
+            // Special case for weekly schedules
+            if (dayOfMonth === '*' && month === '*' && dayOfWeek !== '*') {
+                description.push(`on ${dayOfWeek} of every week`);
+            }
+
+            // Special case for monthly schedules
+            if (dayOfMonth !== '*' && month !== '*' && dayOfWeek === '*') {
+                description.push(`on day ${dayOfMonth} of every month`);
+            }
+
+            return description.join(', ');
+        }
+
+        function describeCron() {
+            const cronInput = document.getElementById('cron');
+            const descriptionElement = document.getElementById('description');
+            const cronExpression = cronInput.value;
+
+            const description = describeCronExpression(cronExpression);
+            descriptionElement.innerText = description;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const cronInput = document.getElementById('cron');
+            cronInput.addEventListener('input', describeCron);
+        });
+    </script>
+</body>
+</html>
